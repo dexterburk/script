@@ -1,48 +1,36 @@
 #ifndef CST_H
 #define CST_H
 
-#include <vector>
+#include <algorithm>
 #include <string>
+#include <map>
+#include <vector>
+#include <iostream>
 
 enum CSTNodeType {
-    PROGRAM,
-    FUNCTION_LIST,
-    FUNCTION,
-    TYPE,
-    PARAMETER_LIST,
-    PARAMETER,
-    STATEMENT_LIST,
-    STATEMENT,
-    EXPRESSION,
-    TERM,
-    FACTOR,
+    GRAMMAR,
+    RULE_LIST,
+    RULE,
+    OPTION_LIST,
+    OPTION,
+    IDENTIFIER_LIST,
     TERMINAL,
 };
 
-std::string cstNodeTypeToString(CSTNodeType type) {
+inline std::string cstNodeTypeToString(CSTNodeType type) {
     switch (type) {
-        case PROGRAM:
-            return "PROGRAM";
-        case FUNCTION_LIST:
-            return "FUNCTION_LIST";
-        case FUNCTION:
-            return "FUNCTION";
-        case TYPE:
-            return "TYPE";
-        case PARAMETER_LIST:
-            return "PARAMETER_LIST";
-        case PARAMETER:
-            return "PARAMETER";
-        case STATEMENT_LIST:
-            return "STATEMENT_LIST";
-        case STATEMENT:
-            return "STATEMENT";
-        case EXPRESSION:
-            return "EXPRESSION";
-        case TERM:
-            return "TERM";
-        case FACTOR:
-            return "FACTOR";
+        case GRAMMAR:
+            return "GRAMMAR";
+        case RULE_LIST:
+            return "RULE_LIST";
+        case RULE:
+            return "RULE";
+        case OPTION_LIST:
+            return "OPTION_LIST";
+        case OPTION:
+            return "OPTION";
+        case IDENTIFIER_LIST:
+            return "IDENTIFIER_LIST";
         case TERMINAL:
             return "TERMINAL";
         default:
@@ -73,52 +61,22 @@ public:
 
 enum CSTTerminalNodeType {
     IDENTIFIER,
-    LEFT_PARENTHESIS,
-    RIGHT_PARENTHESIS,
-    LEFT_BRACE,
-    RIGHT_BRACE,
-    INT,
-    COMMA,
-    RETURN,
+    COLON,
     SEMICOLON,
-    PLUS,
-    MINUS,
-    ASTERISK,
-    SLASH,
-    NUMBER,
+    VERTICAL_BAR,
     END_OF_FILE,
 };
 
-std::string cstTerminalNodeTypeToString(CSTTerminalNodeType type) {
+inline std::string cstTerminalNodeTypeToString(CSTTerminalNodeType type) {
     switch (type) {
         case IDENTIFIER:
             return "IDENTIFIER";
-        case LEFT_PARENTHESIS:
-            return "LEFT_PARENTHESIS";
-        case RIGHT_PARENTHESIS:
-            return "RIGHT_PARENTHESIS";
-        case LEFT_BRACE:
-            return "LEFT_BRACE";
-        case RIGHT_BRACE:
-            return "RIGHT_BRACE";
-        case INT:
-            return "INT";
-        case COMMA:
-            return "COMMA";
-        case RETURN:
-            return "RETURN";
+        case COLON:
+            return "COLON";
         case SEMICOLON:
             return "SEMICOLON";
-        case PLUS:
-            return "PLUS";
-        case MINUS:
-            return "MINUS";
-        case ASTERISK:
-            return "ASTERISK";
-        case SLASH:
-            return "SLASH";
-        case NUMBER:
-            return "NUMBER";
+        case VERTICAL_BAR:
+            return "VERTICAL_BAR";
         case END_OF_FILE:
             return "END_OF_FILE";
         default:

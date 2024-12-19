@@ -391,7 +391,8 @@ void generateCSTHeaderFile() {
   }
   headerFile << "#ifndef CST_H\n";
   headerFile << "#define CST_H\n\n";
-  headerFile << "#include <vector>\n\n";
+  headerFile << "#include <vector>\n";
+  headerFile << "#include <string>\n\n";
   headerFile << "enum CSTNodeType {\n";
   for (const auto &nonTerminal : nonTerminals) {
     headerFile << "    " << toUpperSnakeCase(nonTerminal) << ",\n";
@@ -580,8 +581,8 @@ void generateParserHeaderFile() {
 
 #include "grammar_parser.h"
 
-void traversePostOrder(GrammarParser::ASTNode* node, std::function<void(GrammarParser::ASTNode*)> callback) {
-    for (GrammarParser::ASTNode* child : node->children) {
+void traversePostOrder(GrammarParser::CSTNode* node, std::function<void(GrammarParser::CSTNode*)> callback) {
+    for (GrammarParser::CSTNode* child : node->children) {
         traversePostOrder(child, callback);
     }
     callback(node);
@@ -594,16 +595,16 @@ int main(int argc, char* argv[]) {
   }
 
   string inputString = GrammarParser::readFile(argv[1]);
-  vector<GrammarParser::ASTNode *> input = GrammarParser::tokenize(inputString);
+  vector<GrammarParser::CSTNode *> input = GrammarParser::tokenize(inputString);
 
   try {
-      GrammarParser::ASTNode* astRoot = parse(input);  // Start parsing and generate the AST
-      if (astRoot) {
+      GrammarParser::CSTNode* cstRoot = GrammarParser::parse(input);  // Start parsing and generate the CST
+      if (cstRoot) {
           vector<vector<string>> rhsOptions;
           vector<string> rhs;
-          traversePostOrder(astRoot, [&](GrammarParser::ASTNode* node) {
-            if (node->symbol == "rule" && node->children.size() == 4) {
-              string lhs = node->children[0]->value;
+          traversePostOrder(cstRoot, [&](GrammarParser::CSTNode* node) {
+            if (node->type == GrammarParser::CSTNodeType::RULE && node->children.size() == 4) {
+              string lhs = dynamic_cast<GrammarParser::CSTTerminalNode *>(node->children[0])->value;
               if (rhsOptions.empty()) {
                 throw runtime_error("Empty rule");
               }
@@ -612,7 +613,7 @@ int main(int argc, char* argv[]) {
               }
               rhsOptions.clear();
             }
-            if (node->symbol == "option" && node->children.size() == 1) {
+            if (node->type == GrammarParser::CSTNodeType::OPTION && node->children.size() == 1) {
               if (rhsOptions.empty()) {
                 rhs.erase(rhs.begin());
               }
@@ -622,13 +623,16 @@ int main(int argc, char* argv[]) {
               rhsOptions.push_back(rhs);
               rhs.clear();
             }
-            if (node->symbol == "IDENTIFIER") {
-              assert(node->children.size() == 0);
-              rhs.push_back(node->value);
+            if (node->type == GrammarParser::CSTNodeType::TERMINAL) {
+              GrammarParser::CSTTerminalNode *terminal = dynamic_cast<GrammarParser::CSTTerminalNode *>(node);
+              GrammarParser::CSTTerminalNodeType type = terminal->type;
+              if (type == GrammarParser::CSTTerminalNodeType::IDENTIFIER) {
+                rhs.push_back(terminal->value);
+              }
             }
           });
       } else {
-          cout << "No AST generated." << endl;
+          cout << "No CST generated." << endl;
       }
   } catch (const runtime_error& e) {
       cerr << "Error: " << e.what() << endl;
