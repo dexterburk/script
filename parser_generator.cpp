@@ -1,3 +1,4 @@
+#include <functional>
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -15,6 +16,8 @@ using namespace std;
 struct Rule {
   string lhs;
   vector<string> rhs;
+
+  Rule(const string &lhs, const vector<string> &rhs) : lhs(lhs), rhs(rhs) {}
 
   bool operator<(const Rule &other) const {
     return tie(lhs, rhs) < tie(other.lhs, other.rhs);
@@ -497,23 +500,85 @@ void generateHeaderFile(
   cout << "Header file generated successfully: " << filename << endl;
 }
 
-int main() {
-  grammar = {
-      {"grammar", {"ruleList"}},
-      {"ruleList", {"rule"}},
-      {"ruleList", {"ruleList", "rule"}},
-      {"rule", {"IDENTIFIER", ":", "identifierList", ";"}},
-      {"identifierList", {"IDENTIFIER"}},
-      {"identifierList", {"IDENTIFIER", "identifierList"}},
-  };
+#include "grammar_parser.h"
+
+void traverse(GrammarParser::ASTNode* node, std::function<void(GrammarParser::ASTNode*)> callback) {
+    for (GrammarParser::ASTNode* child : node->children) {
+        traverse(child, callback);
+    }
+    callback(node);
+}
+
+int main(int argc, char* argv[]) {
+  if (argc < 2) {
+      cerr << "Usage: " << argv[0] << " <input_file>" << endl;
+      return 1;
+  }
+
+  string inputString = GrammarParser::readFile(argv[1]);
+  vector<GrammarParser::ASTNode *> input = GrammarParser::tokenize(inputString);
+
+  try {
+      GrammarParser::ASTNode* astRoot = parse(input);  // Start parsing and generate the AST
+      if (astRoot) {
+          cout << "AST for the input:" << endl;
+          astRoot->print();  // Print the AST
+          vector<string> rhs;
+          traverse(astRoot, [&](GrammarParser::ASTNode* node) {
+            if (node->symbol == "rule") {
+                string lhs = node->children[0]->children[0]->symbol;
+                if (rhs.empty()) {
+                    throw runtime_error("Empty rule");
+                }
+                rhs.erase(rhs.begin());
+                grammar.push_back(Rule(lhs, rhs));
+                // Print the rule
+                cout << "Rule: " << lhs << " -> " << join(rhs) << endl;
+                rhs.clear();
+            }
+            if (node->symbol == "IDENTIFIER" && node->children.size() == 1) {
+                rhs.push_back(node->children[0]->symbol);
+            }
+          });
+      } else {
+          cout << "No AST generated." << endl;
+      }
+  } catch (const runtime_error& e) {
+      cerr << "Error: " << e.what() << endl;
+  }
+
+  // Print the grammar
+  for (const auto &rule : grammar) {
+    cout << rule.lhs << " -> ";
+    for (const auto &symbol : rule.rhs) {
+      cout << symbol << " ";
+    }
+    cout << endl;
+  }
 
   // Populate the terminal and non-terminal symbols
-  terminals = {"IDENTIFIER", ":", ";", "$"};
-  nonTerminals = {"grammar", "ruleList", "rule", "identifierList", "identifier"};
+
+  for (const auto &rule : grammar) {
+    if (find(nonTerminals.begin(), nonTerminals.end(), rule.lhs) == nonTerminals.end()) {
+      nonTerminals.push_back(rule.lhs);
+    }
+  }
+
+  for (const auto &rule : grammar) {
+    for (const auto &symbol : rule.rhs) {
+      if (find(nonTerminals.begin(), nonTerminals.end(), symbol) == nonTerminals.end() &&
+          find(terminals.begin(), terminals.end(), symbol) == terminals.end()) {
+        terminals.push_back(symbol);
+      }
+    }
+  }
+
+  terminals.push_back("$");
 
   for (int i = 0; i < terminals.size(); ++i) {
     terminalToID[terminals[i]] = i;
   }
+
   for (int i = 0; i < nonTerminals.size(); ++i) {
     nonTerminalToID[nonTerminals[i]] = i;
   }

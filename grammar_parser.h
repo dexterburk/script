@@ -1,3 +1,10 @@
+#ifndef PARSER_HEADER
+#define PARSER_HEADER
+
+#include <algorithm>
+#include <string>
+#include <map>
+#include <vector>
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -6,9 +13,93 @@
 #include <string>
 #include <sstream>
 #include <stdexcept>
-#include "parser.h"  // Include the generated header file
+
+namespace GrammarParser {
 
 using namespace std;
+
+struct Action {
+    enum ActionType {
+        SHIFT,
+        REDUCE,
+        ACCEPT,
+        NONE
+    };
+    ActionType actionType;
+    int stateOrRule; // For SHIFT: state; For REDUCE: rule index
+};
+
+struct Goto {
+    int state;  // The state to go to for a non-terminal
+};
+
+struct Rule {
+    std::string lhs;  // Left-hand side of the rule
+    std::vector<std::string> rhs;  // Right-hand side of the rule (sequence of symbols)
+};
+
+static const int NUM_TERMINALS = 4;
+static const int NUM_NON_TERMINALS = 5;
+static const int NUM_STATES = 10;
+
+static const std::map<std::string, int> terminalToID = {
+    {"$", 3},
+    {":", 1},
+    {";", 2},
+    {"IDENTIFIER", 0},
+};
+
+static const std::map<std::string, int> nonTerminalToID = {
+    {"grammar", 0},
+    {"identifier", 4},
+    {"identifierList", 3},
+    {"rule", 2},
+    {"ruleList", 1},
+};
+
+static const std::vector<std::vector<Action>> actionTable = {
+    { {Action::SHIFT, 1}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::NONE, -1}, },
+    { {Action::NONE, -1}, {Action::SHIFT, 4}, {Action::NONE, -1}, {Action::NONE, -1}, },
+    { {Action::REDUCE, 1}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::REDUCE, 1}, },
+    { {Action::SHIFT, 1}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::ACCEPT, -1}, },
+    { {Action::SHIFT, 6}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::NONE, -1}, },
+    { {Action::REDUCE, 2}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::REDUCE, 2}, },
+    { {Action::SHIFT, 6}, {Action::NONE, -1}, {Action::REDUCE, 4}, {Action::NONE, -1}, },
+    { {Action::NONE, -1}, {Action::NONE, -1}, {Action::SHIFT, 9}, {Action::NONE, -1}, },
+    { {Action::NONE, -1}, {Action::NONE, -1}, {Action::REDUCE, 5}, {Action::NONE, -1}, },
+    { {Action::REDUCE, 3}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::REDUCE, 3}, },
+};
+
+static const std::vector<std::vector<Goto>> gotoTable = {
+    { {-1}, {3}, {2}, {-1}, {-1}, },
+    { {-1}, {-1}, {-1}, {-1}, {-1}, },
+    { {-1}, {-1}, {-1}, {-1}, {-1}, },
+    { {-1}, {-1}, {5}, {-1}, {-1}, },
+    { {-1}, {-1}, {-1}, {7}, {-1}, },
+    { {-1}, {-1}, {-1}, {-1}, {-1}, },
+    { {-1}, {-1}, {-1}, {8}, {-1}, },
+    { {-1}, {-1}, {-1}, {-1}, {-1}, },
+    { {-1}, {-1}, {-1}, {-1}, {-1}, },
+    { {-1}, {-1}, {-1}, {-1}, {-1}, },
+};
+
+static const std::map<int, int> ruleSymbolCount = {
+    {0, 1},
+    {1, 1},
+    {2, 2},
+    {3, 4},
+    {4, 1},
+    {5, 2},
+};
+
+static const std::vector<Rule> grammar = {
+    {"grammar", {"ruleList"}},
+    {"ruleList", {"rule"}},
+    {"ruleList", {"ruleList", "rule"}},
+    {"rule", {"IDENTIFIER", ":", "identifierList", ";"}},
+    {"identifierList", {"IDENTIFIER"}},
+    {"identifierList", {"IDENTIFIER", "identifierList"}},
+};
 
 struct ASTNode {
     string symbol;  // The symbol of this node (terminal or non-terminal)
@@ -83,11 +174,11 @@ ASTNode* parse(const vector<ASTNode *>& input) {
                     rhsNodes.push_back(rhsNode);  // Collect the AST nodes for the RHS symbols
                 }
 
-                // Create a new AST node for the left-hand side (LHS) of the rule
-                ASTNode* parentNode = new ASTNode(rule.lhs);
-
                 // Reverse the order of the RHS nodes
                 reverse(rhsNodes.begin(), rhsNodes.end());
+
+                // Create a new AST node for the left-hand side (LHS) of the rule
+                ASTNode* parentNode = new ASTNode(rule.lhs);
 
                 // Add the RHS nodes as children of the parent node
                 for (auto* rhsNode : rhsNodes) {
@@ -115,50 +206,15 @@ ASTNode* parse(const vector<ASTNode *>& input) {
     }
 }
 
-// Tokenizer function that returns ASTNode instances for recognized tokens
 vector<ASTNode*> tokenize(const string& input) {
     vector<ASTNode*> tokens;
     int index = 0;
-
     while (index < input.length()) {
         if (isspace(input[index])) {
-            index++;  // Skip whitespace
-            continue;
-        }
-        static const map<char, string> operatorMap = {
-            {',', "COMMA"},
-            {';', "SEMICOLON"},
-            {'{', "LEFT_BRACE"},
-            {'}', "RIGHT_BRACE"},
-            {'(', "LEFT_PARENTHESIS"},
-            {')', "RIGHT_PARENTHESIS"},
-            {'+', "PLUS"},
-            {'-', "MINUS"},
-            {'*', "ASTERISK"},
-            {'/', "SLASH"},
-        };
-
-        auto operatorIter = operatorMap.find(input[index]);
-        if (operatorIter != operatorMap.end()) {
-            tokens.push_back(new ASTNode(operatorIter->second));
             index++;
             continue;
         }
-
-        static const map<string, string> keywordMap = {
-            {"return", "RETURN"},
-            {"int", "INT"},
-        };
-
-        for (const auto& keywordPair : keywordMap) {
-            if (input.substr(index, keywordPair.first.length()) == keywordPair.first) {
-                tokens.push_back(new ASTNode(keywordPair.second));
-                index += keywordPair.first.length();
-                break;
-            }
-        }
-
-        // Handle IDENTIFIER
+        // Handle identifiers
         if (isalpha(input[index]) || input[index] == '_') {
             string identifier;
             while (index < input.length() && (isalnum(input[index]) || input[index] == '_')) {
@@ -169,32 +225,15 @@ vector<ASTNode*> tokenize(const string& input) {
             tokens.push_back(identifierNode);
             continue;
         }
-
-        // Handle NUMBER
-        if (isdigit(input[index])) {
-            string number;
-            while (index < input.length() && isdigit(input[index])) {
-                number += input[index++];
-            }
-            ASTNode* numberNode = new ASTNode("NUMBER");
-            numberNode->addChild(new ASTNode(number));
-            tokens.push_back(numberNode);
-            continue;
-        }
-
-        // Handle unrecognized characters (optional: throw error)
-        cerr << "Unrecognized character: " << input[index] << endl;
-        index++;
+        // Create ASTNode for single character tokens
+        ASTNode* tokenNode = new ASTNode(string(1, input[index++]));
+        tokens.push_back(tokenNode);
     }
-
     // Add end of input symbol
     tokens.push_back(new ASTNode("$"));
-    
-    // For debugging: print tokens
     for (const auto& token : tokens) {
         token->print();
     }
-
     return tokens;
 }
 
@@ -208,26 +247,6 @@ string readFile(const string& filename) {
     return buffer.str();
 }
 
-int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        cerr << "Usage: " << argv[0] << " <input_file>" << endl;
-        return 1;
-    }
+};
 
-    string inputString = readFile(argv[1]);
-    vector<ASTNode *> input = tokenize(inputString);
-
-    try {
-        ASTNode* astRoot = parse(input);  // Start parsing and generate the AST
-        if (astRoot) {
-            cout << "AST for the input:" << endl;
-            astRoot->print();  // Print the AST
-        } else {
-            cout << "No AST generated." << endl;
-        }
-    } catch (const runtime_error& e) {
-        cerr << "Error: " << e.what() << endl;
-    }
-
-    return 0;
-}
+#endif // PARSER_HEADER
