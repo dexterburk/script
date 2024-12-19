@@ -206,18 +206,14 @@ void computeFollow(const string &nonTerminal) {
 set<LR1Item> closure(const set<LR1Item> &items) {
   set<LR1Item> result = items;
   queue<LR1Item> toProcess;
-
   for (const auto &item : items) {
     toProcess.push(item);
   }
-
   while (!toProcess.empty()) {
     LR1Item currentItem = toProcess.front();
     toProcess.pop();
-
     if (currentItem.dotPosition < currentItem.rhs.size()) {
       string nextSymbol = currentItem.rhs[currentItem.dotPosition];
-
       // If it's a non-terminal, add all productions of that non-terminal
       if (nonTerminalToID.find(nextSymbol) !=
           nonTerminalToID.end()) { // Non-terminal
@@ -235,7 +231,6 @@ set<LR1Item> closure(const set<LR1Item> &items) {
       }
     }
   }
-
   return result;
 }
 
@@ -581,11 +576,86 @@ void generateParserHeaderFile() {
 
 #include "grammar_parser.h"
 
+void traversePreOrder(GrammarParser::CSTNode* node, std::function<void(GrammarParser::CSTNode*)> callback) {
+  callback(node);
+  for (GrammarParser::CSTNode* child : node->children) {
+    traversePreOrder(child, callback);
+  }
+}
+
 void traversePostOrder(GrammarParser::CSTNode* node, std::function<void(GrammarParser::CSTNode*)> callback) {
     for (GrammarParser::CSTNode* child : node->children) {
         traversePostOrder(child, callback);
     }
     callback(node);
+}
+
+class ASTNode {
+public:
+  ASTNode() {}
+  virtual ~ASTNode() {}
+  virtual void print(int level = 0) const {}
+};
+
+class ASTRuleNode : public ASTNode {
+public:
+  string symbol;
+  vector<vector<string>> options;
+};
+
+class ASTGrammarNode : public ASTNode {
+public:
+  vector<ASTRuleNode *> rules;
+};
+
+vector<GrammarParser::CSTNode *> collectRules(GrammarParser::CSTNode *cstRoot) {
+  vector<GrammarParser::CSTNode *> rules;
+  traversePreOrder(cstRoot, [&](GrammarParser::CSTNode *node) {
+    if (node->type == GrammarParser::CSTNodeType::RULE) {
+      rules.push_back(node);
+    }
+  });
+  return rules;
+}
+
+vector<GrammarParser::CSTNode *> collectOptions(GrammarParser::CSTNode *cstRoot) {
+  vector<GrammarParser::CSTNode *> options;
+  traversePreOrder(cstRoot, [&](GrammarParser::CSTNode *node) {
+    if (node->type == GrammarParser::CSTNodeType::OPTION) {
+      options.push_back(node);
+    }
+  });
+  return options;
+}
+
+vector<string> collectIdentifiers(GrammarParser::CSTNode *cstRoot) {
+  vector<string> identifiers;
+  traversePreOrder(cstRoot, [&](GrammarParser::CSTNode *node) {
+    if (node->type == GrammarParser::CSTNodeType::TERMINAL) {
+      GrammarParser::CSTTerminalNode *terminal = dynamic_cast<GrammarParser::CSTTerminalNode *>(node);
+      GrammarParser::CSTTerminalNodeType type = terminal->type;
+      if (type == GrammarParser::CSTTerminalNodeType::IDENTIFIER) {
+        identifiers.push_back(terminal->value);
+      }
+    }
+  });
+  return identifiers;
+}
+
+ASTGrammarNode *cstToAst(GrammarParser::CSTNode *cstRoot) {
+  ASTGrammarNode *astRoot = new ASTGrammarNode();
+  auto cstRules = collectRules(cstRoot);
+  for (auto cstRule : cstRules) {
+    ASTRuleNode *astRule = new ASTRuleNode();
+    astRule->symbol = dynamic_cast<GrammarParser::CSTTerminalNode *>(cstRule->children[0])->value;
+    auto cstOptions = collectOptions(cstRule);
+    for (auto cstOption : cstOptions) {
+      auto identifiers = collectIdentifiers(cstOption);
+      astRule->options.push_back(identifiers);
+    }
+    astRoot->rules.push_back(astRule);
+  }
+  return astRoot;
 }
 
 int main(int argc, char* argv[]) {
@@ -598,41 +668,12 @@ int main(int argc, char* argv[]) {
   vector<GrammarParser::CSTNode *> input = GrammarParser::tokenize(inputString);
 
   try {
-      GrammarParser::CSTNode* cstRoot = GrammarParser::parse(input);  // Start parsing and generate the CST
-      if (cstRoot) {
-          vector<vector<string>> rhsOptions;
-          vector<string> rhs;
-          traversePostOrder(cstRoot, [&](GrammarParser::CSTNode* node) {
-            if (node->type == GrammarParser::CSTNodeType::RULE && node->children.size() == 4) {
-              string lhs = dynamic_cast<GrammarParser::CSTTerminalNode *>(node->children[0])->value;
-              if (rhsOptions.empty()) {
-                throw runtime_error("Empty rule");
-              }
-              for (vector<string> rhs : rhsOptions) {
-                grammar.push_back(Rule(lhs, rhs));
-              }
-              rhsOptions.clear();
-            }
-            if (node->type == GrammarParser::CSTNodeType::OPTION && node->children.size() == 1) {
-              if (rhsOptions.empty()) {
-                rhs.erase(rhs.begin());
-              }
-              if (rhs.empty()) {
-                throw runtime_error("Empty option");
-              }
-              rhsOptions.push_back(rhs);
-              rhs.clear();
-            }
-            if (node->type == GrammarParser::CSTNodeType::TERMINAL) {
-              GrammarParser::CSTTerminalNode *terminal = dynamic_cast<GrammarParser::CSTTerminalNode *>(node);
-              GrammarParser::CSTTerminalNodeType type = terminal->type;
-              if (type == GrammarParser::CSTTerminalNodeType::IDENTIFIER) {
-                rhs.push_back(terminal->value);
-              }
-            }
-          });
-      } else {
-          cout << "No CST generated." << endl;
+      GrammarParser::CSTNode* cstRoot = GrammarParser::parse(input);
+      ASTGrammarNode *astRoot = cstToAst(cstRoot);
+      for (auto rule : astRoot->rules) {
+        for (auto option : rule->options) {
+          grammar.push_back(Rule(rule->symbol, option));
+        }
       }
   } catch (const runtime_error& e) {
       cerr << "Error: " << e.what() << endl;
