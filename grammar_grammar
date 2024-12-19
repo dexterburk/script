@@ -1,0 +1,6 @@
+grammar: ruleList;
+ruleList: ruleList rule | rule;
+rule: IDENTIFIER COLON optionList SEMICOLON;
+optionList: optionList VERTICAL_BAR option | option;
+option: identifierList;
+identifierList: identifierList IDENTIFIER | IDENTIFIER;

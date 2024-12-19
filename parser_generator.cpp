@@ -120,12 +120,6 @@ string join(const vector<string> &rhs) {
   return ss.str();
 }
 
-void printItemSet(const set<LR1Item> &items) {
-  for (const auto &item : items) {
-    item.print();
-  }
-}
-
 void printGrammar() {
   for (const auto &rule : grammar) {
     cout << rule.lhs << " -> " << join(rule.rhs) << endl;
@@ -240,8 +234,6 @@ set<LR1Item> closure(const set<LR1Item> &items) {
       }
     }
   }
-
-  printItemSet(result);
 
   return result;
 }
@@ -502,9 +494,9 @@ void generateHeaderFile(
 
 #include "grammar_parser.h"
 
-void traverse(GrammarParser::ASTNode* node, std::function<void(GrammarParser::ASTNode*)> callback) {
+void traversePostOrder(GrammarParser::ASTNode* node, std::function<void(GrammarParser::ASTNode*)> callback) {
     for (GrammarParser::ASTNode* child : node->children) {
-        traverse(child, callback);
+        traversePostOrder(child, callback);
     }
     callback(node);
 }
@@ -521,23 +513,31 @@ int main(int argc, char* argv[]) {
   try {
       GrammarParser::ASTNode* astRoot = parse(input);  // Start parsing and generate the AST
       if (astRoot) {
-          cout << "AST for the input:" << endl;
-          astRoot->print();  // Print the AST
+          vector<vector<string>> rhsOptions;
           vector<string> rhs;
-          traverse(astRoot, [&](GrammarParser::ASTNode* node) {
-            if (node->symbol == "rule") {
-                string lhs = node->children[0]->children[0]->symbol;
-                if (rhs.empty()) {
-                    throw runtime_error("Empty rule");
-                }
-                rhs.erase(rhs.begin());
+          traversePostOrder(astRoot, [&](GrammarParser::ASTNode* node) {
+            if (node->symbol == "rule" && node->children.size() == 4) {
+              string lhs = node->children[0]->children[0]->symbol;
+              if (rhsOptions.empty()) {
+                throw runtime_error("Empty rule");
+              }
+              for (vector<string> rhs : rhsOptions) {
                 grammar.push_back(Rule(lhs, rhs));
-                // Print the rule
-                cout << "Rule: " << lhs << " -> " << join(rhs) << endl;
-                rhs.clear();
+              }
+              rhsOptions.clear();
+            }
+            if (node->symbol == "option" && node->children.size() == 1) {
+              if (rhsOptions.empty()) {
+                rhs.erase(rhs.begin());
+              }
+              if (rhs.empty()) {
+                throw runtime_error("Empty option");
+              }
+              rhsOptions.push_back(rhs);
+              rhs.clear();
             }
             if (node->symbol == "IDENTIFIER" && node->children.size() == 1) {
-                rhs.push_back(node->children[0]->symbol);
+              rhs.push_back(node->children[0]->symbol);
             }
           });
       } else {
@@ -545,6 +545,7 @@ int main(int argc, char* argv[]) {
       }
   } catch (const runtime_error& e) {
       cerr << "Error: " << e.what() << endl;
+      return 1;
   }
 
   // Print the grammar

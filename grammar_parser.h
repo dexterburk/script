@@ -38,49 +38,59 @@ struct Rule {
     std::vector<std::string> rhs;  // Right-hand side of the rule (sequence of symbols)
 };
 
-static const int NUM_TERMINALS = 4;
-static const int NUM_NON_TERMINALS = 5;
-static const int NUM_STATES = 10;
+static const int NUM_TERMINALS = 5;
+static const int NUM_NON_TERMINALS = 6;
+static const int NUM_STATES = 14;
 
 static const std::map<std::string, int> terminalToID = {
-    {"$", 3},
-    {":", 1},
-    {";", 2},
+    {"$", 4},
+    {"COLON", 1},
     {"IDENTIFIER", 0},
+    {"SEMICOLON", 2},
+    {"VERTICAL_BAR", 3},
 };
 
 static const std::map<std::string, int> nonTerminalToID = {
     {"grammar", 0},
-    {"identifier", 4},
-    {"identifierList", 3},
+    {"identifierList", 5},
+    {"option", 4},
+    {"optionList", 3},
     {"rule", 2},
     {"ruleList", 1},
 };
 
 static const std::vector<std::vector<Action>> actionTable = {
-    { {Action::SHIFT, 1}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::NONE, -1}, },
-    { {Action::NONE, -1}, {Action::SHIFT, 4}, {Action::NONE, -1}, {Action::NONE, -1}, },
-    { {Action::REDUCE, 1}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::REDUCE, 1}, },
-    { {Action::SHIFT, 1}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::ACCEPT, -1}, },
-    { {Action::SHIFT, 6}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::NONE, -1}, },
-    { {Action::REDUCE, 2}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::REDUCE, 2}, },
-    { {Action::SHIFT, 6}, {Action::NONE, -1}, {Action::REDUCE, 4}, {Action::NONE, -1}, },
-    { {Action::NONE, -1}, {Action::NONE, -1}, {Action::SHIFT, 9}, {Action::NONE, -1}, },
-    { {Action::NONE, -1}, {Action::NONE, -1}, {Action::REDUCE, 5}, {Action::NONE, -1}, },
-    { {Action::REDUCE, 3}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::REDUCE, 3}, },
+    { {Action::SHIFT, 1}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::NONE, -1}, },
+    { {Action::NONE, -1}, {Action::SHIFT, 4}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::NONE, -1}, },
+    { {Action::REDUCE, 1}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::REDUCE, 1}, },
+    { {Action::SHIFT, 1}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::ACCEPT, -1}, },
+    { {Action::SHIFT, 6}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::NONE, -1}, },
+    { {Action::REDUCE, 2}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::REDUCE, 2}, },
+    { {Action::REDUCE, 8}, {Action::NONE, -1}, {Action::REDUCE, 8}, {Action::REDUCE, 8}, {Action::NONE, -1}, },
+    { {Action::SHIFT, 10}, {Action::NONE, -1}, {Action::REDUCE, 6}, {Action::REDUCE, 6}, {Action::NONE, -1}, },
+    { {Action::NONE, -1}, {Action::NONE, -1}, {Action::REDUCE, 4}, {Action::REDUCE, 4}, {Action::NONE, -1}, },
+    { {Action::NONE, -1}, {Action::NONE, -1}, {Action::SHIFT, 11}, {Action::SHIFT, 12}, {Action::NONE, -1}, },
+    { {Action::REDUCE, 7}, {Action::NONE, -1}, {Action::REDUCE, 7}, {Action::REDUCE, 7}, {Action::NONE, -1}, },
+    { {Action::REDUCE, 3}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::REDUCE, 3}, },
+    { {Action::SHIFT, 6}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::NONE, -1}, {Action::NONE, -1}, },
+    { {Action::NONE, -1}, {Action::NONE, -1}, {Action::REDUCE, 5}, {Action::REDUCE, 5}, {Action::NONE, -1}, },
 };
 
 static const std::vector<std::vector<Goto>> gotoTable = {
-    { {-1}, {3}, {2}, {-1}, {-1}, },
-    { {-1}, {-1}, {-1}, {-1}, {-1}, },
-    { {-1}, {-1}, {-1}, {-1}, {-1}, },
-    { {-1}, {-1}, {5}, {-1}, {-1}, },
-    { {-1}, {-1}, {-1}, {7}, {-1}, },
-    { {-1}, {-1}, {-1}, {-1}, {-1}, },
-    { {-1}, {-1}, {-1}, {8}, {-1}, },
-    { {-1}, {-1}, {-1}, {-1}, {-1}, },
-    { {-1}, {-1}, {-1}, {-1}, {-1}, },
-    { {-1}, {-1}, {-1}, {-1}, {-1}, },
+    { {-1}, {3}, {2}, {-1}, {-1}, {-1}, },
+    { {-1}, {-1}, {-1}, {-1}, {-1}, {-1}, },
+    { {-1}, {-1}, {-1}, {-1}, {-1}, {-1}, },
+    { {-1}, {-1}, {5}, {-1}, {-1}, {-1}, },
+    { {-1}, {-1}, {-1}, {9}, {8}, {7}, },
+    { {-1}, {-1}, {-1}, {-1}, {-1}, {-1}, },
+    { {-1}, {-1}, {-1}, {-1}, {-1}, {-1}, },
+    { {-1}, {-1}, {-1}, {-1}, {-1}, {-1}, },
+    { {-1}, {-1}, {-1}, {-1}, {-1}, {-1}, },
+    { {-1}, {-1}, {-1}, {-1}, {-1}, {-1}, },
+    { {-1}, {-1}, {-1}, {-1}, {-1}, {-1}, },
+    { {-1}, {-1}, {-1}, {-1}, {-1}, {-1}, },
+    { {-1}, {-1}, {-1}, {-1}, {13}, {7}, },
+    { {-1}, {-1}, {-1}, {-1}, {-1}, {-1}, },
 };
 
 static const std::map<int, int> ruleSymbolCount = {
@@ -89,16 +99,22 @@ static const std::map<int, int> ruleSymbolCount = {
     {2, 2},
     {3, 4},
     {4, 1},
-    {5, 2},
+    {5, 3},
+    {6, 1},
+    {7, 2},
+    {8, 1},
 };
 
 static const std::vector<Rule> grammar = {
     {"grammar", {"ruleList"}},
     {"ruleList", {"rule"}},
     {"ruleList", {"ruleList", "rule"}},
-    {"rule", {"IDENTIFIER", ":", "identifierList", ";"}},
+    {"rule", {"IDENTIFIER", "COLON", "optionList", "SEMICOLON"}},
+    {"optionList", {"option"}},
+    {"optionList", {"optionList", "VERTICAL_BAR", "option"}},
+    {"option", {"identifierList"}},
+    {"identifierList", {"identifierList", "IDENTIFIER"}},
     {"identifierList", {"IDENTIFIER"}},
-    {"identifierList", {"IDENTIFIER", "identifierList"}},
 };
 
 struct ASTNode {
@@ -214,6 +230,22 @@ vector<ASTNode*> tokenize(const string& input) {
             index++;
             continue;
         }
+        // Create ASTNode for single character tokens
+        if (input[index] == ':') {
+            tokens.push_back(new ASTNode("COLON"));
+            index++;
+            continue;
+        }
+        if (input[index] == ';') {
+            tokens.push_back(new ASTNode("SEMICOLON"));
+            index++;
+            continue;
+        }
+        if (input[index] == '|') {
+            tokens.push_back(new ASTNode("VERTICAL_BAR"));
+            index++;
+            continue;
+        }
         // Handle identifiers
         if (isalpha(input[index]) || input[index] == '_') {
             string identifier;
@@ -225,9 +257,7 @@ vector<ASTNode*> tokenize(const string& input) {
             tokens.push_back(identifierNode);
             continue;
         }
-        // Create ASTNode for single character tokens
-        ASTNode* tokenNode = new ASTNode(string(1, input[index++]));
-        tokens.push_back(tokenNode);
+        throw runtime_error("Unknown token: " + string(1, input[index]));
     }
     // Add end of input symbol
     tokens.push_back(new ASTNode("$"));

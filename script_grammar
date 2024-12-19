@@ -1,21 +1,54 @@
-program: functionList;
-functionList: functionList function;
-functionList: function;
-function: type IDENTIFIER LEFT_PARENTHESIS parameterList RIGHT_PARENTHESIS LEFT_BRACE statementList RIGHT_BRACE;
-type: INT;
-parameterList: parameterList COMMA parameter;
-parameterList: parameter;
-parameter: type IDENTIFIER;
-statementList: statementList statement;
-statementList: statement;
-statement: returnStatement;
-returnStatement: RETURN expression SEMICOLON;
-expression: expression PLUS term;
-expression: expression MINUS term;
-expression: term;
-term: term ASTERISK factor;
-term: term SLASH factor;
-term: factor;
-factor: LEFT_PARENTHESIS expression RIGHT_PARENTHESIS;
-factor: IDENTIFIER;
-factor: NUMBER;
+program
+    : functionList
+    ;
+
+functionList
+    :
+    functionList function
+    | function
+    ;
+
+function
+    : type IDENTIFIER LEFT_PARENTHESIS parameterList RIGHT_PARENTHESIS LEFT_BRACE statementList RIGHT_BRACE
+    | type IDENTIFIER LEFT_PARENTHESIS RIGHT_PARENTHESIS LEFT_BRACE statementList RIGHT_BRACE
+    ;
+
+type
+    : INT
+    ;
+
+parameterList
+    : parameterList COMMA parameter
+    | parameter
+    ;
+
+parameter
+    : type IDENTIFIER
+    ;
+
+statementList
+    : statementList statement
+    | statement
+    ;
+
+statement
+    : RETURN expression SEMICOLON
+    ;
+
+expression
+    : expression PLUS term
+    | expression MINUS term
+    | term
+    ;
+
+term
+    : term ASTERISK factor
+    | term SLASH factor
+    | factor
+    ;
+
+factor
+    : LEFT_PARENTHESIS expression RIGHT_PARENTHESIS
+    | IDENTIFIER
+    | NUMBER
+    ;
