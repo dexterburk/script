@@ -1,3 +1,4 @@
+#include <cassert>
 #include <functional>
 #include <algorithm>
 #include <fstream>
@@ -517,7 +518,7 @@ int main(int argc, char* argv[]) {
           vector<string> rhs;
           traversePostOrder(astRoot, [&](GrammarParser::ASTNode* node) {
             if (node->symbol == "rule" && node->children.size() == 4) {
-              string lhs = node->children[0]->children[0]->symbol;
+              string lhs = node->children[0]->value;
               if (rhsOptions.empty()) {
                 throw runtime_error("Empty rule");
               }
@@ -536,8 +537,9 @@ int main(int argc, char* argv[]) {
               rhsOptions.push_back(rhs);
               rhs.clear();
             }
-            if (node->symbol == "IDENTIFIER" && node->children.size() == 1) {
-              rhs.push_back(node->children[0]->symbol);
+            if (node->symbol == "IDENTIFIER") {
+              assert(node->children.size() == 0);
+              rhs.push_back(node->value);
             }
           });
       } else {

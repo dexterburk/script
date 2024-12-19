@@ -12,9 +12,11 @@ using namespace std;
 
 struct ASTNode {
     string symbol;  // The symbol of this node (terminal or non-terminal)
+    string value;  // The value of this node
     vector<ASTNode*> children;  // The children of this node (for non-terminals)
     
     ASTNode(const string& symbol) : symbol(symbol) {}
+    ASTNode(const string& symbol, const string& value) : symbol(symbol), value(value) {}
 
     // Function to add a child node
     void addChild(ASTNode* child) {
@@ -24,7 +26,11 @@ struct ASTNode {
     // Function to print the tree (for debugging purposes)
     void print(int level = 0) const {
         for (int i = 0; i < level; ++i) cout << "  ";  // Indentation for depth
-        cout << symbol << endl;
+        cout << symbol;
+        if (!value.empty()) {
+            cout << " (" << value << ")";
+        }
+        cout << endl;
         for (auto* child : children) {
             child->print(level + 1);
         }
@@ -164,8 +170,7 @@ vector<ASTNode*> tokenize(const string& input) {
             while (index < input.length() && (isalnum(input[index]) || input[index] == '_')) {
                 identifier += input[index++];
             }
-            ASTNode* identifierNode = new ASTNode("IDENTIFIER");
-            identifierNode->addChild(new ASTNode(identifier));
+            ASTNode* identifierNode = new ASTNode("IDENTIFIER", identifier);
             tokens.push_back(identifierNode);
             continue;
         }
@@ -176,8 +181,7 @@ vector<ASTNode*> tokenize(const string& input) {
             while (index < input.length() && isdigit(input[index])) {
                 number += input[index++];
             }
-            ASTNode* numberNode = new ASTNode("NUMBER");
-            numberNode->addChild(new ASTNode(number));
+            ASTNode* numberNode = new ASTNode("NUMBER", number);
             tokens.push_back(numberNode);
             continue;
         }
