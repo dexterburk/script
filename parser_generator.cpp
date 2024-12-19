@@ -170,9 +170,9 @@ void computeFollow(const string &nonTerminal) {
   if (followSets.find(nonTerminal) != followSets.end())
     return;
 
-  // Initially, the Follow set of the start symbol contains $
+  // Initially, the Follow set of the start symbol contains END_OF_FILE
   if (nonTerminal == grammar[0].lhs) {
-    followSets[nonTerminal].insert("$");
+    followSets[nonTerminal].insert("END_OF_FILE");
   }
 
   // Iterate over all productions to compute the Follow set
@@ -286,7 +286,7 @@ vector<set<LR1Item>> states; // List of LR(1) states
 void generateLR1ParseTable() {
   map<set<LR1Item>, int> stateToID; // Mapping from set of items to state ID
 
-  LR1Item startItem(grammar[0].lhs, grammar[0].rhs, 0, "$");
+  LR1Item startItem(grammar[0].lhs, grammar[0].rhs, 0, "END_OF_FILE");
   set<LR1Item> initialState = closure({startItem});
   states.push_back(initialState);
   stateToID[initialState] = 0;
@@ -354,9 +354,9 @@ void generateLR1ParseTable() {
           actionTable[currentStateID][terminalToID[item.lookahead]] =
               Action(Action::REDUCE, ruleId);
         }
-        if (item.lhs == grammar[0].lhs && item.lookahead == "$") {
+        if (item.lhs == grammar[0].lhs && item.lookahead == "END_OF_FILE") {
           // Accept state for the start production
-          actionTable[currentStateID][terminalToID["$"]] =
+          actionTable[currentStateID][terminalToID["END_OF_FILE"]] =
               Action(Action::ACCEPT);
         }
       }
@@ -366,22 +366,109 @@ void generateLR1ParseTable() {
   printParseTable();
 }
 
-// Function to generate the header file
-void generateHeaderFile(
-    const string &filename, const vector<vector<Action>> &actionTable,
-    const vector<vector<Goto>> &gotoTable, const map<string, int> &terminalToID,
-    const map<string, int> &nonTerminalToID, const vector<string> &terminals,
-    const vector<string> &nonTerminals, const vector<Rule> &grammar) {
+// camelCase to uppercase SNAKE_CASE
+std::string toUpperSnakeCase(std::string input) {
+  bool changed;
+  do {
+    changed = false;
+    for (size_t i = 0; i < input.length() - 1; i++) {
+      if (std::islower(input[i]) && std::isupper(input[i + 1])) {
+        input.insert(i + 1, "_");
+        changed = true;
+        break;
+      }
+    }
+  } while (changed);
+  std::transform(input.begin(), input.end(), input.begin(),
+                 [](unsigned char c) { return std::toupper(c); });
+  return input;
+}
 
-  ofstream headerFile(filename);
+void generateCSTHeaderFile() {
+  ofstream headerFile("cst.h");
   if (!headerFile.is_open()) {
-    cerr << "Error opening file for writing: " << filename << endl;
-    return;
+
   }
+  headerFile << "#ifndef CST_H\n";
+  headerFile << "#define CST_H\n\n";
+  headerFile << "#include <vector>\n\n";
+  headerFile << "enum CSTNodeType {\n";
+  for (const auto &nonTerminal : nonTerminals) {
+    headerFile << "    " << toUpperSnakeCase(nonTerminal) << ",\n";
+  }
+  headerFile << "    TERMINAL,\n";
+  headerFile << "};\n\n";
+  headerFile << "std::string cstNodeTypeToString(CSTNodeType type) {\n";
+  headerFile << "    switch (type) {\n";
+  for (const auto &nonTerminal : nonTerminals) {
+    headerFile << "        case " << toUpperSnakeCase(nonTerminal) << ":\n";
+    headerFile << "            return \"" << toUpperSnakeCase(nonTerminal) << "\";\n";
+  }
+  headerFile << "        case TERMINAL:\n";
+  headerFile << "            return \"TERMINAL\";\n";
+  headerFile << "        default:\n";
+  headerFile << "            return \"UNKNOWN\";\n";
+  headerFile << "    }\n";
+  headerFile << "}\n\n";
+  headerFile << "class CSTNode {\n";
+  headerFile << "public:\n";
+  headerFile << "    CSTNodeType type;\n";
+  headerFile << "    CSTNode *parent;\n";
+  headerFile << "    std::vector<CSTNode *> children;\n";
+  headerFile << "    CSTNode() {}\n";
+  headerFile << "    CSTNode(CSTNodeType type) : type(type) {}\n";
+  headerFile << "    void addChild(CSTNode *child) {\n";
+  headerFile << "        child->parent = this;\n";
+  headerFile << "        children.push_back(child);\n";
+  headerFile << "    }\n\n";
+  headerFile << "    virtual void print(int level = 0) const {\n";
+  headerFile << "        for (int i = 0; i < level; ++i) std::cout << \"  \";  // Indentation for depth\n";
+  headerFile << "        std::cout << cstNodeTypeToString(type) << std::endl;\n";
+  headerFile << "        for (auto child : children) {\n";
+  headerFile << "            child->print(level + 1);\n";
+  headerFile << "        }\n";
+  headerFile << "    }\n";
+  headerFile << "};\n\n";
+  headerFile << "enum CSTTerminalNodeType {\n";
+  for (const auto &terminal : terminals) {
+    headerFile << "    " << terminal << ",\n";
+  }
+  headerFile << "};\n\n";
+  headerFile << "std::string cstTerminalNodeTypeToString(CSTTerminalNodeType type) {\n";
+  headerFile << "    switch (type) {\n";
+  for (const auto &terminal : terminals) {
+    headerFile << "        case " << toUpperSnakeCase(terminal) << ":\n";
+    headerFile << "            return \"" << toUpperSnakeCase(terminal) << "\";\n";
+  }
+  headerFile << "        default:\n";
+  headerFile << "            return \"UNKNOWN\";\n";
+  headerFile << "    }\n";
+  headerFile << "}\n\n";
+  headerFile << "class CSTTerminalNode : public CSTNode {\n";
+  headerFile << "public:\n";
+  headerFile << "    CSTTerminalNodeType type;\n";
+  headerFile << "    std::string value;\n";
+  headerFile << "    CSTTerminalNode(CSTTerminalNodeType type, const std::string &value) : CSTNode(CSTNodeType::TERMINAL), type(type), value(value) {}\n";
+  headerFile << "    CSTTerminalNode(CSTTerminalNodeType type) : CSTTerminalNode(type, \"\") {}\n";
+  headerFile << "    void print(int level = 0) const override  {\n";
+  headerFile << "        for (int i = 0; i < level; ++i) std::cout << \"  \";  // Indentation for depth\n";
+  headerFile << "        std::cout << cstTerminalNodeTypeToString(type);\n";
+  headerFile << "        if (!value.empty()) {\n";
+  headerFile << "            std::cout << \": \" << value;\n";
+  headerFile << "        }\n";
+  headerFile << "        std::cout << std::endl;\n";
+  headerFile << "    }\n";
+  headerFile << "};\n\n";
+  headerFile << "#endif";
+}
+
+// Function to generate the header file
+void generateParserHeaderFile() {
+  ofstream headerFile("parser.h");
 
   // Write the header guards
-  headerFile << "#ifndef PARSER_HEADER\n";
-  headerFile << "#define PARSER_HEADER\n\n";
+  headerFile << "#ifndef PARSER_H\n";
+  headerFile << "#define PARSER_H\n\n";
 
   // Write the includes
   headerFile << "#include <algorithm>\n";
@@ -485,12 +572,10 @@ void generateHeaderFile(
   headerFile << "};\n\n";
 
   // Close the header guard
-  headerFile << "#endif // PARSER_HEADER\n";
+  headerFile << "#endif // PARSER_H\n";
 
   // Close the file
   headerFile.close();
-
-  cout << "Header file generated successfully: " << filename << endl;
 }
 
 #include "grammar_parser.h"
@@ -576,7 +661,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  terminals.push_back("$");
+  terminals.push_back("END_OF_FILE");
 
   for (int i = 0; i < terminals.size(); ++i) {
     terminalToID[terminals[i]] = i;
@@ -591,12 +676,9 @@ int main(int argc, char* argv[]) {
     computeFollow(nonTerminal);
   }
 
-  // Generate the LR(1) parse table
   generateLR1ParseTable();
-
-  // Generate the header file
-  generateHeaderFile("parser.h", actionTable, gotoTable, terminalToID,
-                     nonTerminalToID, terminals, nonTerminals, grammar);
+  generateParserHeaderFile();
+  generateCSTHeaderFile();
 
   return 0;
 }

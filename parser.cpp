@@ -7,52 +7,54 @@
 #include <sstream>
 #include <stdexcept>
 #include "parser.h"  // Include the generated header file
+#include "cst.h"
 
 using namespace std;
 
-struct ASTNode {
-    string symbol;  // The symbol of this node (terminal or non-terminal)
-    string value;  // The value of this node
-    vector<ASTNode*> children;  // The children of this node (for non-terminals)
+// struct CSTNode {
+//     string symbol;  // The symbol of this node (terminal or non-terminal)
+//     string value;  // The value of this node
+//     vector<CSTNode*> children;  // The children of this node (for non-terminals)
     
-    ASTNode(const string& symbol) : symbol(symbol) {}
-    ASTNode(const string& symbol, const string& value) : symbol(symbol), value(value) {}
+//     CSTNode(const string& symbol) : symbol(symbol) {}
+//     CSTNode(const string& symbol, const string& value) : symbol(symbol), value(value) {}
 
-    // Function to add a child node
-    void addChild(ASTNode* child) {
-        children.push_back(child);
-    }
+//     // Function to add a child node
+//     void addChild(CSTNode* child) {
+//         children.push_back(child);
+//     }
 
-    // Function to print the tree (for debugging purposes)
-    void print(int level = 0) const {
-        for (int i = 0; i < level; ++i) cout << "  ";  // Indentation for depth
-        cout << symbol;
-        if (!value.empty()) {
-            cout << " (" << value << ")";
-        }
-        cout << endl;
-        for (auto* child : children) {
-            child->print(level + 1);
-        }
-    }
-};
+//     // Function to print the tree (for debugging purposes)
+//     void print(int level = 0) const {
+//         for (int i = 0; i < level; ++i) cout << "  ";  // Indentation for depth
+//         cout << symbol;
+//         if (!value.empty()) {
+//             cout << " (" << value << ")";
+//         }
+//         cout << endl;
+//         for (auto* child : children) {
+//             child->print(level + 1);
+//         }
+//     }
+// };
 
 // The LR(1) parser function
-ASTNode* parse(const vector<ASTNode *>& input) {
+CSTNode* parse(const vector<CSTNode *>& input) {
     stack<int> stateStack;  // Stack to store states
-    stack<ASTNode*> astStack;  // Stack to store AST nodes for each symbol
+    stack<CSTNode*> astStack;  // Stack to store AST nodes for each symbol
     
     stateStack.push(0);  // Initial state is 0
     
     size_t inputIndex = 0;  // Pointer to the current symbol in the input
-    ASTNode *currentSymbol = input[inputIndex];  // Current symbol to process
+    CSTNode *currentSymbol = input[inputIndex];  // Current symbol to process
     
     while (true) {
         int currentState = stateStack.top();  // Top of the state stack
-        cout << "Current State: " << currentState << ", Current Symbol: " << currentSymbol->symbol << endl;
+        CSTTerminalNodeType type = dynamic_cast<CSTTerminalNode*>(currentSymbol)->type;
+        cout << "Current State: " << currentState << ", Current Symbol: " << cstTerminalNodeTypeToString(type) << endl;
 
         // Get the action for the current state and symbol
-        Action currentAction = actionTable[currentState][terminalToID.at(currentSymbol->symbol)];
+        Action currentAction = actionTable[currentState][type];
 
         // Handle the action
         switch (currentAction.actionType) {
@@ -65,7 +67,7 @@ ASTNode* parse(const vector<ASTNode *>& input) {
                 if (inputIndex < input.size()) {
                     currentSymbol = input[inputIndex];  // Update current symbol
                 } else {
-                    currentSymbol = new ASTNode("$");
+                    currentSymbol = new CSTTerminalNode(CSTTerminalNodeType::END_OF_FILE);
                 }
                 break;
             }
@@ -81,16 +83,16 @@ ASTNode* parse(const vector<ASTNode *>& input) {
                 cout << endl;
 
                 // Pop symbols and states from the stacks
-                vector<ASTNode*> rhsNodes;
+                vector<CSTNode*> rhsNodes;
                 for (size_t i = 0; i < rule.rhs.size(); ++i) {
                     stateStack.pop();
-                    ASTNode* rhsNode = astStack.top();
+                    CSTNode* rhsNode = astStack.top();
                     astStack.pop();
                     rhsNodes.push_back(rhsNode);  // Collect the AST nodes for the RHS symbols
                 }
 
                 // Create a new AST node for the left-hand side (LHS) of the rule
-                ASTNode* parentNode = new ASTNode(rule.lhs);
+                CSTNode* parentNode = new CSTNode((CSTNodeType)nonTerminalToID.at(rule.lhs));
 
                 // Reverse the order of the RHS nodes
                 reverse(rhsNodes.begin(), rhsNodes.end());
@@ -121,9 +123,9 @@ ASTNode* parse(const vector<ASTNode *>& input) {
     }
 }
 
-// Tokenizer function that returns ASTNode instances for recognized tokens
-vector<ASTNode*> tokenize(const string& input) {
-    vector<ASTNode*> tokens;
+// Tokenizer function that returns CSTNode instances for recognized tokens
+vector<CSTNode*> tokenize(const string& input) {
+    vector<CSTNode*> tokens;
     int index = 0;
 
     while (index < input.length()) {
@@ -131,34 +133,34 @@ vector<ASTNode*> tokenize(const string& input) {
             index++;  // Skip whitespace
             continue;
         }
-        static const map<char, string> operatorMap = {
-            {',', "COMMA"},
-            {';', "SEMICOLON"},
-            {'{', "LEFT_BRACE"},
-            {'}', "RIGHT_BRACE"},
-            {'(', "LEFT_PARENTHESIS"},
-            {')', "RIGHT_PARENTHESIS"},
-            {'+', "PLUS"},
-            {'-', "MINUS"},
-            {'*', "ASTERISK"},
-            {'/', "SLASH"},
+        static const map<char, CSTTerminalNodeType> operatorMap = {
+            {',', CSTTerminalNodeType::COMMA},
+            {';', CSTTerminalNodeType::SEMICOLON},
+            {'{', CSTTerminalNodeType::LEFT_BRACE},
+            {'}', CSTTerminalNodeType::RIGHT_BRACE},
+            {'(', CSTTerminalNodeType::LEFT_PARENTHESIS},
+            {')', CSTTerminalNodeType::RIGHT_PARENTHESIS},
+            {'+', CSTTerminalNodeType::PLUS},
+            {'-', CSTTerminalNodeType::MINUS},
+            {'*', CSTTerminalNodeType::ASTERISK},
+            {'/', CSTTerminalNodeType::SLASH},
         };
 
         auto operatorIter = operatorMap.find(input[index]);
         if (operatorIter != operatorMap.end()) {
-            tokens.push_back(new ASTNode(operatorIter->second));
+            tokens.push_back(new CSTTerminalNode(operatorIter->second));
             index++;
             continue;
         }
 
-        static const map<string, string> keywordMap = {
-            {"return", "RETURN"},
-            {"int", "INT"},
+        static const map<string, CSTTerminalNodeType> keywordMap = {
+            {"return", CSTTerminalNodeType::RETURN},
+            {"int",    CSTTerminalNodeType::INT},
         };
 
         for (const auto& keywordPair : keywordMap) {
             if (input.substr(index, keywordPair.first.length()) == keywordPair.first) {
-                tokens.push_back(new ASTNode(keywordPair.second));
+                tokens.push_back(new CSTTerminalNode(keywordPair.second));
                 index += keywordPair.first.length();
                 break;
             }
@@ -170,7 +172,7 @@ vector<ASTNode*> tokenize(const string& input) {
             while (index < input.length() && (isalnum(input[index]) || input[index] == '_')) {
                 identifier += input[index++];
             }
-            ASTNode* identifierNode = new ASTNode("IDENTIFIER", identifier);
+            CSTNode* identifierNode = new CSTTerminalNode(CSTTerminalNodeType::IDENTIFIER, identifier);
             tokens.push_back(identifierNode);
             continue;
         }
@@ -181,7 +183,7 @@ vector<ASTNode*> tokenize(const string& input) {
             while (index < input.length() && isdigit(input[index])) {
                 number += input[index++];
             }
-            ASTNode* numberNode = new ASTNode("NUMBER", number);
+            CSTNode* numberNode = new CSTTerminalNode(CSTTerminalNodeType::NUMBER, number);
             tokens.push_back(numberNode);
             continue;
         }
@@ -192,7 +194,7 @@ vector<ASTNode*> tokenize(const string& input) {
     }
 
     // Add end of input symbol
-    tokens.push_back(new ASTNode("$"));
+    tokens.push_back(new CSTTerminalNode(CSTTerminalNodeType::END_OF_FILE));
     
     // For debugging: print tokens
     for (const auto& token : tokens) {
@@ -219,10 +221,10 @@ int main(int argc, char* argv[]) {
     }
 
     string inputString = readFile(argv[1]);
-    vector<ASTNode *> input = tokenize(inputString);
+    vector<CSTNode *> input = tokenize(inputString);
 
     try {
-        ASTNode* astRoot = parse(input);  // Start parsing and generate the AST
+        CSTNode* astRoot = parse(input);  // Start parsing and generate the AST
         if (astRoot) {
             cout << "AST for the input:" << endl;
             astRoot->print();  // Print the AST

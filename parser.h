@@ -1,5 +1,5 @@
-#ifndef PARSER_HEADER
-#define PARSER_HEADER
+#ifndef PARSER_H
+#define PARSER_H
 
 #include <algorithm>
 #include <string>
@@ -31,9 +31,9 @@ static const int NUM_NON_TERMINALS = 11;
 static const int NUM_STATES = 42;
 
 static const std::map<std::string, int> terminalToID = {
-    {"$", 14},
     {"ASTERISK", 11},
     {"COMMA", 6},
+    {"END_OF_FILE", 14},
     {"IDENTIFIER", 0},
     {"INT", 5},
     {"LEFT_BRACE", 3},
@@ -200,4 +200,4 @@ static const std::vector<Rule> grammar = {
     {"factor", {"NUMBER"}},
 };
 
-#endif // PARSER_HEADER
+#endif // PARSER_H

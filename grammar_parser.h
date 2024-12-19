@@ -43,7 +43,7 @@ static const int NUM_NON_TERMINALS = 6;
 static const int NUM_STATES = 14;
 
 static const std::map<std::string, int> terminalToID = {
-    {"$", 4},
+    {"END_OF_FILE", 4},
     {"COLON", 1},
     {"IDENTIFIER", 0},
     {"SEMICOLON", 2},
@@ -168,7 +168,7 @@ ASTNode* parse(const vector<ASTNode *>& input) {
                 if (inputIndex < input.size()) {
                     currentSymbol = input[inputIndex];  // Update current symbol
                 } else {
-                    currentSymbol = new ASTNode("$");
+                    currentSymbol = new ASTNode("END_OF_FILE");
                 }
                 break;
             }
@@ -261,7 +261,7 @@ vector<ASTNode*> tokenize(const string& input) {
         throw runtime_error("Unknown token: " + string(1, input[index]));
     }
     // Add end of input symbol
-    tokens.push_back(new ASTNode("$"));
+    tokens.push_back(new ASTNode("END_OF_FILE"));
     for (const auto& token : tokens) {
         token->print();
     }
